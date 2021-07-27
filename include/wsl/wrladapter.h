@@ -310,8 +310,8 @@ namespace WRL
             return InternalRelease();
         }
 
-        // Previously, unsafe behavior could be triggered when 'this' is ComPtr<IInspectable> or ComPtr<IUnknown> and CopyTo is used to copy to another type U. 
-        // The user will use operator& to convert the destination into a ComPtrRef, which can then implicit cast to IInspectable** and IUnknown**. 
+        // Previously, unsafe behavior could be triggered when 'this' is ComPtr<IInspectable> or ComPtr<IUnknown> and CopyTo is used to copy to another type U.
+        // The user will use operator& to convert the destination into a ComPtrRef, which can then implicit cast to IInspectable** and IUnknown**.
         // If this overload of CopyTo is not present, it will implicitly cast to IInspectable or IUnknown and match CopyTo(InterfaceType**) instead.
         // A valid polymoprhic downcast requires run-time type checking via QueryInterface, so CopyTo(InterfaceType**) will break type safety.
         // This overload matches ComPtrRef before the implicit cast takes place, preventing the unsafe downcast.
@@ -568,7 +568,7 @@ namespace WRL
         };
 
 
-        // Selector is used to "tag" base interfaces to be used in casting, since a runtime class may indirectly derive from 
+        // Selector is used to "tag" base interfaces to be used in casting, since a runtime class may indirectly derive from
         // the same interface or Implements<> template multiple times
         template <typename base, typename disciminator>
         struct  Selector : public base
@@ -695,9 +695,9 @@ namespace WRL
             }
         };
 
-        template <typename ...TInterfaces>
+        template <typename TInterface, typename ...TInterfaces>
         class RuntimeClassImpl :
-            public AdjustImplements<TInterfaces...>::Type,
+            public AdjustImplements<TInterface, TInterfaces...>::Type,
             public RuntimeClassBase,
             public DontUseNewUseMake
         {
@@ -717,8 +717,7 @@ namespace WRL
                 ULONG ref = InternalRelease();
                 if (ref == 0)
                 {
-                    ~RuntimeClassImpl();
-                    delete[] static_cast<char*>(this);
+                    delete static_cast<TInterface>(this);
                 }
 
                 return ref;
@@ -778,13 +777,7 @@ namespace WRL
     template <typename T, typename ...TArgs>
     ComPtr<T> Make(TArgs&&... args)
     {
-        std::unique_ptr<char[]> buffer(new(std::nothrow) char[sizeof(T)]);
-        if (buffer)
-        {
-            new (buffer.get())T(std::forward<TArgs>(args)...);
-        }
-
-        return ComPtr<T>{buffer.release()};
+        return ComPtr<T>{new(std::nothrow) T(std::forward<TArgs>(args)...)};
     }
 
     using Details::ChainInterfaces;
